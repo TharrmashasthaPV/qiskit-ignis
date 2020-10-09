@@ -108,7 +108,7 @@ def qv_circuits(qubit_lists, ntrials=1,
 
 
 def qv_circuits_opt(qubit_lists=None, ntrials=1, max_qubits=2,
-                backend=None, qr=None, cr=None, seed=None):
+                backend=None, qr=None, cr=None, seed=None, n_desired_layouts=1):
     """
     Return a list of quantum volume circuits transpiled on
      for specific backend. The circuit will be square (depth=width)
@@ -169,24 +169,25 @@ def qv_circuits_opt(qubit_lists=None, ntrials=1, max_qubits=2,
 
     if qubit_lists == None:
         # find layouts for a range of qubits from 2 up to max_qubits
+        # [[n_desired_layouts * Layouts], [n_desired_layouts * Layouts], [], [], [], []]
         best_layouts_list = [[] for tmp in range(max_qubits-1)]
         for n_qubits in range(2, max_qubits+1, 1):
             best_layouts_list[n_qubits-2] = get_layout(qv_circs, n_qubits, ntrials, backend,
-                                                          transpile_trials=None, n_desired_layouts=1)
-        # [[n_desired_layouts * Layouts], [n_desired_layouts * Layouts], [], [], [], []]
-        qubit_lists = []
-
+                transpile_trials=None, n_desired_layouts=n_desired_layouts)
+        best_n_qubit_lists = [ [] * n_desired_layouts]
         for good_layout in best_layouts_list:
-            qubit_lists.append(good_layout[0])
-
+            for nth_best in range(0, n_desired_layouts):
+                best_n_qubit_lists[nth_best].append(good_layout[nth_best])
     else:
         warnings.warn("The choice of the qubit list may result in extra swaps and extra qubits"
                       "when running on the actual machine. Please check the backend's"
                       "coupling map to choose the right set of qubits.")
-
     
-    depth_list = [len(qubit_list) for qubit_list in qubit_lists]
+    depth_list = [[] * n_desired_layouts]
+    for nth_best in range(0, n_desired_layouts):
+        depth_list[nth_best].append([len(qubit_list) for qubit_list in best_n_qubit_lists[nth_best]])
 
+    # TODO: depth_list for n_desired_layouts
     circuits = [[] for e in range(ntrials)]
     for trial in range(ntrials):
         for depthidx, depth in enumerate(depth_list):
@@ -253,3 +254,5 @@ if __name__ == "__main__":
                     backend=fake_backend)
     print("qv_circ[0]: ", qv_circs[0])
     print(qv_circs[0][0])
+    print(qv_circs[0][0]._layout)
+    print(qv_circs[0][0]._layout[0])
